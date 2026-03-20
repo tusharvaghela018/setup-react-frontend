@@ -6,6 +6,8 @@ import {
     type UseQueryOptions,
 } from "@tanstack/react-query";
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+
 export interface ApiResponse<T = unknown> {
     success?: boolean;
     message?: string;
@@ -14,28 +16,38 @@ export interface ApiResponse<T = unknown> {
     show_toast?: boolean;
 }
 
-type UrlOrFactory<TParams> = string | ((params?: TParams) => string);
+type QueryOptions<T> = Omit<
+    UseQueryOptions<ApiResponse<T>>,
+    "queryKey" | "queryFn"
+>;
 
-const resolveUrl = <TParams>(url: UrlOrFactory<TParams>, params?: TParams) =>
-    typeof url === "function" ? url(params) : url;
+type MutationOptions<TData, TVariables> = UseMutationOptions<
+    ApiResponse<TData>,
+    Error,
+    TVariables
+>;
 
 // ─── GET ────────────────────────────────────────────────────────────────────
 
-export const useGetApi = <TData, TParams extends Record<string, any> = {}>(
-    url: UrlOrFactory<TParams>,
+export const useGetApi = <
+    TData,
+    TParams extends Record<string, unknown> = Record<string, unknown>
+>(
+    url: string,
     params?: TParams,
-    options?: Omit<UseQueryOptions<ApiResponse<TData>>, "queryKey" | "queryFn"> & {
-        queryKey?: string;
-    }
+    options?: QueryOptions<TData> & { queryKey?: string }
 ) => {
     const { queryKey, ...restOptions } = options ?? {};
+
+    const safeParams =
+        params && Object.keys(params).length > 0 ? params : undefined;
+
     return useQuery<ApiResponse<TData>>({
-        queryKey: queryKey ? [queryKey, params] : [resolveUrl(url, params), params],
+        queryKey: queryKey ? [queryKey, safeParams] : [url, safeParams],
         queryFn: async () => {
-            const { data } = await axiosInstance.get<ApiResponse<TData>>(
-                resolveUrl(url, params),
-                { params }
-            );
+            const { data } = await axiosInstance.get<ApiResponse<TData>>(url, {
+                params: safeParams,
+            });
             return data;
         },
         ...restOptions,
@@ -46,7 +58,7 @@ export const useGetApi = <TData, TParams extends Record<string, any> = {}>(
 
 export const usePostApi = <TData, TBody = unknown>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, Error, TBody>
+    options?: MutationOptions<TData, TBody>
 ) => {
     return useMutation<ApiResponse<TData>, Error, TBody>({
         mutationFn: async (body) => {
@@ -59,11 +71,11 @@ export const usePostApi = <TData, TBody = unknown>(
 
 // ─── PUT ────────────────────────────────────────────────────────────────────
 
-type WithOptionalId<TBody> = { id?: string | number; body: TBody };
+export type WithOptionalId<TBody> = { id?: string | number; body: TBody };
 
 export const usePutApi = <TData, TBody = unknown>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, Error, WithOptionalId<TBody>>
+    options?: MutationOptions<TData, WithOptionalId<TBody>>
 ) => {
     return useMutation<ApiResponse<TData>, Error, WithOptionalId<TBody>>({
         mutationFn: async ({ id, body }) => {
@@ -79,7 +91,7 @@ export const usePutApi = <TData, TBody = unknown>(
 
 export const usePatchApi = <TData, TBody = unknown>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, Error, WithOptionalId<TBody>>
+    options?: MutationOptions<TData, WithOptionalId<TBody>>
 ) => {
     return useMutation<ApiResponse<TData>, Error, WithOptionalId<TBody>>({
         mutationFn: async ({ id, body }) => {
@@ -93,16 +105,22 @@ export const usePatchApi = <TData, TBody = unknown>(
 
 // ─── DELETE ─────────────────────────────────────────────────────────────────
 
-type DeleteVars<TId> = { id: TId; body?: unknown } | TId;
+export type DeleteVars<TId extends string | number = string | number> =
+    | { id: TId; body?: unknown }
+    | TId;
 
-export const useDeleteApi = <TData, TId extends string | number = string | number>(
+export const useDeleteApi = <
+    TData,
+    TId extends string | number = string | number
+>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, Error, DeleteVars<TId>>
+    options?: MutationOptions<TData, DeleteVars<TId>>
 ) => {
     return useMutation<ApiResponse<TData>, Error, DeleteVars<TId>>({
         mutationFn: async (vars) => {
             const id = typeof vars === "object" && "id" in vars ? vars.id : vars;
-            const body = typeof vars === "object" && "id" in vars ? vars.body : undefined;
+            const body =
+                typeof vars === "object" && "id" in vars ? vars.body : undefined;
             const { data } = await axiosInstance.delete<ApiResponse<TData>>(
                 `${url}/${id}`,
                 { data: body }
