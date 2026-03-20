@@ -6,17 +6,11 @@ import {
     type UseQueryOptions,
 } from "@tanstack/react-query";
 
-export interface ApiError {
-    message: string;
-    status?: number;
-    errors?: Record<string, string[]>;
-}
-
 export interface ApiResponse<T = unknown> {
     success?: boolean;
     message?: string;
     data?: T;
-    error?: ApiError;
+    error?: string;
     show_toast?: boolean;
 }
 
@@ -52,9 +46,9 @@ export const useGetApi = <TData, TParams extends Record<string, any> = {}>(
 
 export const usePostApi = <TData, TBody = unknown>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, ApiError, TBody>
+    options?: UseMutationOptions<ApiResponse<TData>, Error, TBody>
 ) => {
-    return useMutation<ApiResponse<TData>, ApiError, TBody>({
+    return useMutation<ApiResponse<TData>, Error, TBody>({
         mutationFn: async (body) => {
             const { data } = await axiosInstance.post<ApiResponse<TData>>(url, body);
             return data;
@@ -69,9 +63,9 @@ type WithOptionalId<TBody> = { id?: string | number; body: TBody };
 
 export const usePutApi = <TData, TBody = unknown>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, ApiError, WithOptionalId<TBody>>
+    options?: UseMutationOptions<ApiResponse<TData>, Error, WithOptionalId<TBody>>
 ) => {
-    return useMutation<ApiResponse<TData>, ApiError, WithOptionalId<TBody>>({
+    return useMutation<ApiResponse<TData>, Error, WithOptionalId<TBody>>({
         mutationFn: async ({ id, body }) => {
             const endpoint = id !== undefined ? `${url}/${id}` : url;
             const { data } = await axiosInstance.put<ApiResponse<TData>>(endpoint, body);
@@ -85,9 +79,9 @@ export const usePutApi = <TData, TBody = unknown>(
 
 export const usePatchApi = <TData, TBody = unknown>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, ApiError, WithOptionalId<TBody>>
+    options?: UseMutationOptions<ApiResponse<TData>, Error, WithOptionalId<TBody>>
 ) => {
-    return useMutation<ApiResponse<TData>, ApiError, WithOptionalId<TBody>>({
+    return useMutation<ApiResponse<TData>, Error, WithOptionalId<TBody>>({
         mutationFn: async ({ id, body }) => {
             const endpoint = id !== undefined ? `${url}/${id}` : url;
             const { data } = await axiosInstance.patch<ApiResponse<TData>>(endpoint, body);
@@ -103,9 +97,9 @@ type DeleteVars<TId> = { id: TId; body?: unknown } | TId;
 
 export const useDeleteApi = <TData, TId extends string | number = string | number>(
     url: string,
-    options?: UseMutationOptions<ApiResponse<TData>, ApiError, DeleteVars<TId>>
+    options?: UseMutationOptions<ApiResponse<TData>, Error, DeleteVars<TId>>
 ) => {
-    return useMutation<ApiResponse<TData>, ApiError, DeleteVars<TId>>({
+    return useMutation<ApiResponse<TData>, Error, DeleteVars<TId>>({
         mutationFn: async (vars) => {
             const id = typeof vars === "object" && "id" in vars ? vars.id : vars;
             const body = typeof vars === "object" && "id" in vars ? vars.body : undefined;
